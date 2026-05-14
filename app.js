@@ -9,7 +9,9 @@ const CLOUDINARY_UPLOAD_PRESET = "registro_choferes_unsigned   ";
 // ESTADO
 // ==========================
 let lastImageData = null;
+let lastOriginalFile = null;
 let isSubmitting = false;
+
 
 window.addEventListener("load", () => {
   const id = localStorage.getItem("chofer_id");
@@ -159,6 +161,7 @@ function logout() {
   localStorage.removeItem("chofer_id");
   localStorage.removeItem("chofer_nombre");
   lastImageData = null;
+  lastOriginalFile = null;
   isSubmitting = false;
   mostrarLogin();
 }
@@ -177,8 +180,11 @@ function previewFile(e) {
     previewImg.classList.add("hidden");
     fotoStatus.textContent = "Sin imagen seleccionada";
     lastImageData = null;
+    lastOriginalFile = null;
     return;
   }
+
+  lastOriginalFile = file;
 
   const reader = new FileReader();
 
@@ -186,12 +192,13 @@ function previewFile(e) {
     lastImageData = ev.target.result;
     previewImg.src = ev.target.result;
     previewImg.classList.remove("hidden");
-    fotoStatus.textContent = `Imagen lista: ${file.name}`;
+    fotoStatus.textContent = `Imagen lista: ${file.name || "foto"}`
     setMessage("ok", "✅ Imagen lista para subir");
   };
 
   reader.onerror = () => {
     lastImageData = null;
+    lastOriginalFile = null;
     previewImg.src = "";
     previewImg.classList.add("hidden");
     fotoStatus.textContent = "No se pudo leer la imagen";
@@ -202,26 +209,28 @@ function previewFile(e) {
 }
 
 function descargarCopia() {
-  if (!lastImageData) return;
-
-  const byteString = atob(lastImageData.split(",")[1]);
-  const mimeString = lastImageData.split(",")[0].split(":")[1].split(";")[0];
-  const ab = new ArrayBuffer(byteString.length);
-  const ia = new Uint8Array(ab);
-
-  for (let i = 0; i < byteString.length; i++) {
-    ia[i] = byteString.charCodeAt(i);
+  if (!lastOriginalFile) {
+    setMessage("err", "❌ No hay una foto original disponible para descargar");
+    return;
   }
 
-  const blob = new Blob([ab], { type: mimeString });
-  const url = window.URL.createObjectURL(blob);
+  const url = URL.createObjectURL(lastOriginalFile);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `registro_foto_${Date.now()}.jpg`;
+
+  // Detectar extensión según tipo real de archivo
+  let ext = "jpg";
+  if (lastOriginalFile.type === "image/png") ext = "png";
+  if (lastOriginalFile.type === "image/webp") ext = "webp";
+  if (lastOriginalFile.type === "image/heic") ext = "heic";
+  if (lastOriginalFile.type === "image/heif") ext = "heif";
+
+  link.download = lastOriginalFile.name || `registro_foto_${Date.now()}.${ext}`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-  window.URL.revokeObjectURL(url);
+
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 async function comprimirImagen(file) {
@@ -379,7 +388,9 @@ async function submit() {
     const hoy = new Date();
     document.getElementById("fechaTransferencia").value = hoy.toISOString().split("T")[0];
 
-    lastImageData = null;
+
+// lastImageData se conserva para permitir la descarga después del guardado
+``
 
   } catch (err) {
     setMessage("err", `❌ ${escapeHtml(String(err.message || err))}`);
