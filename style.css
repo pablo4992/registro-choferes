@@ -171,7 +171,7 @@ textarea {
     grid-template-columns: 1fr;
   }
 }
-dev-footer {
+.dev-footer {
   position: fixed;
   bottom: 10px;
   left: 0;
